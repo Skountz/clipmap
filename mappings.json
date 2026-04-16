@@ -1,0 +1,29 @@
+{
+  "poll_ms": 400,
+  "groups": [
+    {
+      "terms": [
+        { "type": "Cluster",      "value": "cluster-abc123" },
+        { "type": "Label",        "value": "Cluster Tooling" },
+        { "type": "Product Code", "value": "AB42" },
+        { "type": "Team",         "value": "Platform Eng" }
+      ]
+    },
+    {
+      "terms": [
+        { "type": "Cluster",      "value": "cluster-xyz789" },
+        { "type": "Label",        "value": "Cluster Storage" },
+        { "type": "Product Code", "value": "ST99" },
+        { "type": "Team",         "value": "Infra" }
+      ]
+    },
+    {
+      "terms": [
+        { "type": "Service",      "value": "svc-auth-prod" },
+        { "type": "Label",        "value": "Auth Service" },
+        { "type": "Product Code", "value": "AU01" },
+        { "type": "Owner",        "value": "security@company.com" }
+      ]
+    }
+  ]
+}

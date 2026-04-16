@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>fr.frenchbytes.clipmap</string>
+
+    <key>CFBundleName</key>
+    <string>clipmap</string>
+
+    <key>CFBundleExecutable</key>
+    <string>clipmap</string>
+
+    <key>CFBundleVersion</key>
+    <string>0.2.0</string>
+
+    <key>CFBundleShortVersionString</key>
+    <string>0.2.0</string>
+
+    <!-- Background agent — hide from Dock and App Switcher -->
+    <key>LSUIElement</key>
+    <true/>
+
+    <!-- Show as persistent alert, not a banner that auto-dismisses -->
+    <key>NSUserNotificationAlertStyle</key>
+    <string>alert</string>
+</dict>
+</plist>

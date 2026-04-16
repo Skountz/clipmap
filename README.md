@@ -2,82 +2,89 @@
 
 Copy any identifier. Instantly know what it is.
 
-A zero-overhead macOS daemon that watches your clipboard and maps identifiers to human-readable context — cross-referenced, typed, and formatted as a native notification.
+A lightweight background daemon that watches your clipboard and surfaces related context via native notifications. Mappings are fetched from a shared URL, so the whole team stays in sync automatically.
 
 ```
 You copy:   cluster-abc123
 
-You see:  ┌─ clipmap ──────────────────────────────┐
-          │ cluster-abc123 — Cluster               │
-          │                                        │
-          │ Label         Cluster Tooling          │
-          │ Product Code  AB42                     │
-          │ Team          Platform Eng             │
-          └────────────────────────────────────────┘
+You see:  ┌─ cluster-abc123 — Cluster ─────────┐
+          │ Label:        Cluster Tooling       │
+          │ Product Code: AB42                  │
+          │ Team:         Platform Eng          │
+          └─────────────────────────────────────┘
 ```
 
----
-
-## Requirements
-
-- macOS 12+
-- [Rust](https://rustup.rs) (only to build)
+Works on **macOS**, **Windows**, and **Linux**.
 
 ---
 
 ## Install
 
-```bash
-# 1. Clone or download the source
-git clone https://github.com/you/clipmap && cd clipmap
+### macOS
 
-# 2. Build (optimized, stripped binary ~400 KB)
+Download the latest `.dmg` from [Releases](../../releases), open it, drag **clipmap** to `/Applications`.
+
+On first launch, clipmap installs a default `config.json` and `mappings.json` to `~/.config/clipmap/`. Edit them to point to your team's mappings source.
+
+**Run at login:**
+```sh
+cp /Applications/clipmap.app/Contents/Resources/fr.frenchbytes.clipmap.plist \
+   ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/fr.frenchbytes.clipmap.plist
+```
+
+Stop: `launchctl unload ~/Library/LaunchAgents/fr.frenchbytes.clipmap.plist`  
+Logs: `/tmp/clipmap.log` and `/tmp/clipmap.err`
+
+### Windows
+
+```powershell
+# Run once as Administrator
+.\windows.ps1
+```
+
+### Linux
+
+```sh
 cargo build --release
-
-# 3. Move the binary somewhere permanent
-cp target/release/clipmap /usr/local/bin/clipmap
-
-# 4. Put your mappings file next to the binary
-cp mappings.json /usr/local/bin/mappings.json
+cp target/release/clipmap ~/.local/bin/
 ```
+
+Add to your session autostart or create a systemd user unit.
 
 ---
 
-## Run
+## Configure
 
-**Once (foreground, good for testing):**
-```bash
-clipmap
-```
+Config lives at:
 
-**At login, silently in the background:**
-```bash
-# Edit the plist — update the path if you installed elsewhere
-nano com.yourname.clipmap.plist
+| Platform | Path |
+|---|---|
+| macOS / Linux | `~/.config/clipmap/config.json` |
+| Windows | `%APPDATA%\clipmap\config.json` |
 
-# Register with launchd
-cp com.yourname.clipmap.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.yourname.clipmap.plist
-```
-
-To stop it:
-```bash
-launchctl unload ~/Library/LaunchAgents/com.yourname.clipmap.plist
-```
-
-Logs go to `/tmp/clipmap.log` and `/tmp/clipmap.err`.
-
----
-
-## Configure `mappings.json`
-
-Each group is a set of terms that refer to the same thing.  
-Every term has a **type** (your label) and a **value** (what to match on clipboard).  
-Types are free-form — define whatever makes sense for your data.
+### `config.json`
 
 ```json
 {
-  "poll_ms": 400,
+  "mappings_url":    "https://raw.githubusercontent.com/yourorg/yourrepo/main/mappings.json",
+  "poll_ms":         400,
+  "refresh_minutes": 30
+}
+```
+
+| Field | Description |
+|---|---|
+| `mappings_url` | URL or local path to the shared mappings file |
+| `poll_ms` | Clipboard check interval in ms (default: 400) |
+| `refresh_minutes` | How often to re-fetch mappings (default: 30) |
+
+### `mappings.json`
+
+Host this file anywhere reachable — GitHub raw, S3, an internal server. One person edits it, everyone gets the update within `refresh_minutes`. No restart needed.
+
+```json
+{
   "groups": [
     {
       "terms": [
@@ -89,24 +96,44 @@ Types are free-form — define whatever makes sense for your data.
     },
     {
       "terms": [
-        { "type": "Service",  "value": "svc-auth-prod" },
-        { "type": "Label",    "value": "Auth Service" },
-        { "type": "Owner",    "value": "security@company.com" }
+        { "type": "Service", "value": "svc-auth-prod" },
+        { "type": "Label",   "value": "Auth Service" },
+        { "type": "Owner",   "value": "security@example.com" }
       ]
     }
   ]
 }
 ```
 
-Copy any `value` from any group — you'll get all sibling terms displayed with their types.  
-Matching is **case-insensitive**. Reload the daemon after editing.
+- Each group links any number of terms
+- `type` is free-form — use whatever labels make sense for your team
+- Copying **any** term in a group surfaces all the others
+- Matching is case-insensitive
 
-| Field | Description |
-|---|---|
-| `poll_ms` | Clipboard check interval in ms (default: `400`) |
-| `groups` | Array of term groups |
-| `type` | Display label, free-form string |
-| `value` | The string to match when copied |
+---
+
+## How team updates work
+
+```
+You (maintainer)              Everyone else
+      │                             │
+      ├─ edit mappings.json         │
+      └─ push to GitHub / upload    │
+                                    │
+                              (within 30 min)
+                              clipmap silently
+                              re-fetches and reloads
+```
+
+---
+
+## Build from source
+
+```sh
+cargo build --release
+```
+
+Requires [Rust](https://rustup.rs). On Linux, also requires `libdbus-1-dev`.
 
 ---
 
@@ -114,9 +141,7 @@ Matching is **case-insensitive**. Reload the daemon after editing.
 
 | | |
 |---|---|
-| Idle CPU | ~0% (sleeping between polls) |
-| RAM | ~2–3 MB |
-| Binary size | ~400 KB |
-| Notification latency | < 1 poll cycle |
-
-Runs entirely on-device. No network calls, no telemetry.
+| Idle CPU | ~0% |
+| RAM | ~3–4 MB |
+| Network | One small HTTP GET per refresh interval |
+| Binary size | ~500 KB |

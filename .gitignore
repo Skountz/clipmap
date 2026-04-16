@@ -1,1 +1,7 @@
 target/
+*.dmg
+*.app/
+
+# Xcode user-specific files
+xcuserdata/
+*.xcuserstate

@@ -1,15 +1,18 @@
 [package]
 name = "clipmap"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 
 [dependencies]
-arboard = "3"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+arboard     = "3"
+dirs        = "5"
+serde       = { version = "1", features = ["derive"] }
+serde_json  = "1"
+notify-rust = "4"
+ureq        = "3"
 
 [profile.release]
-opt-level = 3
-strip = true       # strip debug symbols → tiny binary
-lto = true         # link-time optimization
-codegen-units = 1  # max optimization
+opt-level     = 3
+strip         = true
+lto           = true
+codegen-units = 1

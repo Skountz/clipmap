@@ -1,0 +1,6 @@
+{
+  "_commented_mappings_url":     "https://raw.githubusercontent.com/yourorg/clipmap/main/mappings.json",
+  "mappings_url":     "mappings.json",
+  "poll_ms":          400,
+  "refresh_minutes":  30
+}

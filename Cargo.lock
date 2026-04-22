@@ -266,6 +266,7 @@ version = "0.2.0"
 dependencies = [
  "arboard",
  "dirs",
+ "mac-notification-sys",
  "notify-rust",
  "serde",
  "serde_json",

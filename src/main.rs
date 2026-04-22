@@ -1,3 +1,5 @@
+#[cfg(target_os = "macos")]
+use mac_notification_sys;
 use arboard::Clipboard;
 use notify_rust::Notification;
 use serde::Deserialize;
@@ -163,6 +165,35 @@ fn fetch_index(source: &str) -> Result<Index, String> {
 // Notification
 // ---------------------------------------------------------------------------
 
+// Formats terms as an aligned box.  When `title` is Some it is embedded in
+// the top border (terminal); when None the top border is plain (notification
+// body, where the title is already the system notification header).
+fn format_box(title: Option<&str>, terms: &[&Term]) -> String {
+    let key_w  = terms.iter().map(|t| t.kind.len()).max().unwrap_or(0);
+    let col_w  = key_w + 2; // width of "Key: " column after padding
+    let val_w  = terms.iter().map(|t| t.value.len()).max().unwrap_or(0);
+    let data_w = col_w + val_w;
+    let inner  = match title {
+        Some(h) => data_w.max(h.len() + 2),
+        None    => data_w,
+    };
+
+    let top = match title {
+        Some(h) => format!("┌─ {} {}┐", h, "─".repeat(inner - h.len() - 1)),
+        None    => format!("┌{}┐", "─".repeat(inner + 2)),
+    };
+    let rows: Vec<String> = terms.iter().map(|t| {
+        let entry = format!("{:<col_w$}{}", format!("{}:", t.kind), t.value);
+        format!("│ {:<inner$} │", entry)
+    }).collect();
+    let bottom = format!("└{}┘", "─".repeat(inner + 2));
+
+    let mut lines = vec![top];
+    lines.extend(rows);
+    lines.push(bottom);
+    lines.join("\n")
+}
+
 fn notify(matched_value: &str, siblings: &[Term]) {
     let matched = siblings
         .iter()
@@ -178,27 +209,16 @@ fn notify(matched_value: &str, siblings: &[Term]) {
         .filter(|t| t.value.trim().to_lowercase() != matched_value.trim().to_lowercase())
         .collect();
 
-    // Body: "Type: Value" per line, works with proportional fonts
+    // Terminal: full box with title in top border (monospace — perfect alignment)
+    println!("{}\n", format_box(Some(&title), &others));
+
     let body = others
         .iter()
         .map(|t| format!("{}: {}", t.kind, t.value))
         .collect::<Vec<_>>()
         .join("\n");
-
-    // Terminal output: padded table (monospace is fine here)
-    let pad = others.iter().map(|t| t.kind.len()).max().unwrap_or(0);
-    println!("✓  {}", title);
-    for t in &others {
-        println!("   {:<pad$}  {}", t.kind, t.value);
-    }
-    println!();
-
-    // Native notification
     let mut n = Notification::new();
     n.summary(&title).body(&body).sound_name("default");
-
-    #[cfg(target_os = "macos")]
-    n.subtitle("clipmap");
 
     if let Err(e) = n.show() {
         eprintln!("⚠  notification: {e}");
@@ -210,6 +230,12 @@ fn notify(matched_value: &str, siblings: &[Term]) {
 // ---------------------------------------------------------------------------
 
 fn main() {
+    // Register the app bundle identifier before any notification is sent.
+    // mac-notification-sys otherwise looks up an app named "use_default",
+    // which triggers a "Choose Application — Where is use_default?" dialog.
+    #[cfg(target_os = "macos")]
+    mac_notification_sys::set_application("fr.frenchbytes.clipmap").ok();
+
     bootstrap_config();
     let config      = load_config();
     let poll        = Duration::from_millis(config.poll_ms.unwrap_or(400));
